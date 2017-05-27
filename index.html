@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Music</title>
+    <meta charset="utf-8">
+    <link rel='stylesheet' href='./public/stylesheets/index.css' />
+    <style type="text/css">
+      
+    </style>
+  </head>
+  <body>
+  <div class="left">
+  	<input type="file" name="file" id="file">
+    <div class="image">
+      <img src="">
+    </div>
+    <header>Music</header>
+    <!--<button id="nextOne">随机下一曲</button>-->
+    <button id="stop">停止</button>
+    <p class="volume">
+      音量:<input id="volume" type="range" min="0" max="100" value="60">
+    </p>
+    <p>歌曲列表：</p>
+    <ul id="list">
+      
+    </ul>
+    <!--<button id="refresh">刷新播放列表</button>-->
+  </div>
+  <div class="right" id="box">
+  </div>
+  
+  <script type="text/javascript">
+  var MusicVisualizer=require('./public/javascripts/MusicVisualizer.js')
+  console.log(typeof MusicVisualizer)
+  	function $(s){
+  		return document.querySelectorAll(s)
+  	}
+  	function resize(){
+  		document.body.style.height=window.innerHeight+"px"
+  		height=box.clientHeight-10;
+  		width=box.clientWidth-10;
+  		canvas.height=height;
+  		canvas.width=width;
+  		var line=ctx.createLinearGradient(0,0,0,height)
+  		line.addColorStop(0,"red")
+  		line.addColorStop(0.33,"orange")
+  		line.addColorStop(0.67,"yellow")
+  		line.addColorStop(1,"green")
+  		ctx.fillStyle=line
+  		//
+  	}
+  	
+  	var size=128
+  	var box=$("#box")[0]
+  	var width,height
+  	var canvas=document.createElement("canvas")
+  	var ctx=canvas.getContext("2d")
+  	var mv=new MusicVisualizer({
+  		size:size,
+  		visualizer:draw,
+  		onended:function(){
+  		}
+  	})
+  	var fRead=new FileReader()
+    $('#stop')[0].onclick=function(){
+      mv.stop()
+    }
+  	box.appendChild(canvas)
+  	var files=[]
+  	function drewList(file){
+  		var ul=$('#list')[0]
+  		var li=document.createElement('li')
+  		li.innerHTML=file.name
+  		ul.appendChild(li)
+  	}
+  	function updateFiles(file){
+  		var flag=true
+  		
+  		if(file.constructor.name!='File'){
+
+  			return
+  		}else{
+  			for(var i=0;i<files.length;i++){
+  				if(file.path==files[i].path){
+  					flag=false
+  					break;
+  				}
+  			}
+  			if(flag){
+  				files.push(file)
+  				//change views
+  				drewList(file)
+  			}
+  		}
+  	}
+  	fRead.onload=function(e){
+  		mv.decode(e.target.result,function(audiobuffer) {
+  			//console.log(audiobuffer.constructor.name)
+  			mv.source && mv.stop()
+  			var bs=MusicVisualizer.ac.createBufferSource()
+  			bs.connect(mv.analyser)
+  			bs.buffer=audiobuffer;
+  			bs[bs.start?"start":"noteOn"](0)
+  			bs.onended=mv.onended
+  			console.log(bs)
+  			mv.source=bs
+  		})
+  	}
+  var path=require('path')
+	document.getElementById('file').onchange=function(e) {
+    if(this.files.length==0) return;
+		updateFiles(this.files[0])
+
+    document.getElementsByTagName('img')[0].src=path.join('./public/images/',this.files[0].name+  '.jpg')
+    console.log('./public/images/'+this.files[0].name)
+		fRead.readAsArrayBuffer(this.files[0])
+	}
+	resize()
+  	window.onresize=resize;
+  	function random(m,n){
+  		return Math.round(Math.random()*(n-m)+m)
+  	}
+  	function getDots(){
+  		Dots=[]
+  		for(var i=0;i<size;i++){
+  			Dots.push({
+  				cap:0
+  			})
+  		}
+  	}
+  	getDots()
+  	function draw(arr){
+  		//console.log(arr)
+  		ctx.clearRect(0,0,width,height)
+  		var w=width/size
+  		for(var i=0;i<size;i++){
+  			var o=Dots[i]
+  			var h=arr[i]/256*height-w*1.2
+  			if(h>0||o.cap>0){
+  				ctx.fillRect(w*i+w*0.2,height-h,w*0.8,h)
+  				ctx.fillRect(w*i+w*0.2,height-o.cap-w*0.8,w*0.8,w*0.8)
+  			}
+  			o.cap--;
+  			if(o.cap<0)
+  				o.cap=0
+  			if(h>0){
+  				o.cap=o.cap<(h+w*0.6)?(h+w*0.4):o.cap
+  			}
+  		}
+  	}
+
+
+
+	$("#volume")[0].onchange=function(){
+		mv.changeVolume(this.value/this.max);
+	}
+	$("#volume")[0].onchange();
+	</script>
+  </body>
+</html>
