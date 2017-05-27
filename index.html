@@ -30,54 +30,59 @@
   </div>
   
   <script type="text/javascript">
-  var MusicVisualizer=require('./public/javascripts/MusicVisualizer.js')
-  console.log(typeof MusicVisualizer)
-  	function $(s){
-  		return document.querySelectorAll(s)
-  	}
-  	function resize(){
-  		document.body.style.height=window.innerHeight+"px"
-  		height=box.clientHeight-10;
-  		width=box.clientWidth-10;
-  		canvas.height=height;
-  		canvas.width=width;
-  		var line=ctx.createLinearGradient(0,0,0,height)
-  		line.addColorStop(0,"red")
-  		line.addColorStop(0.33,"orange")
-  		line.addColorStop(0.67,"yellow")
-  		line.addColorStop(1,"green")
-  		ctx.fillStyle=line
-  		//
-  	}
-  	
-  	var size=128
-  	var box=$("#box")[0]
-  	var width,height
-  	var canvas=document.createElement("canvas")
-  	var ctx=canvas.getContext("2d")
-  	var mv=new MusicVisualizer({
-  		size:size,
-  		visualizer:draw,
-  		onended:function(){
-  		}
-  	})
-  	var fRead=new FileReader()
-    $('#stop')[0].onclick=function(){
-      mv.stop()
-    }
-  	box.appendChild(canvas)
-  	var files=[]
-  	function drewList(file){
+    var MusicVisualizer=require('./public/javascripts/MusicVisualizer.js')
+    var size=128
+    var box=$("#box")[0]
+    var width,height
+    var canvas=document.createElement("canvas")
+    var ctx=canvas.getContext("2d")
+    var fRead=new FileReader()
+    var files=[]
+    var path=require('path')
+    var mv=new MusicVisualizer({
+      size:size,
+      visualizer:draw,
+      onended:function(){
+      }
+    })
+  	function drewList(file,data){
   		var ul=$('#list')[0]
   		var li=document.createElement('li')
   		li.innerHTML=file.name
+        li.value=data
   		ul.appendChild(li)
   	}
+    var Dots=(function getDots(){
+        var Dots=[]
+        for(var i=0;i<size;i++){
+            Dots.push({
+                cap:0
+            })
+        }
+        return Dots
+    })()
+    function draw(arr){
+        //console.log(arr)
+        ctx.clearRect(0,0,width,height)
+        var w=width/size
+        for(var i=0;i<size;i++){
+            var o=Dots[i]
+            var h=arr[i]/256*height-w*1.2
+            if(h>0||o.cap>0){
+                ctx.fillRect(w*i+w*0.2,height-h,w*0.8,h)
+                ctx.fillRect(w*i+w*0.2,height-o.cap-w*0.8,w*0.8,w*0.8)
+            }
+            o.cap--;
+            if(o.cap<0)
+                o.cap=0
+            if(h>0){
+                o.cap=o.cap<(h+w*0.6)?(h+w*0.4):o.cap
+            }
+        }
+    }
   	function updateFiles(file){
   		var flag=true
-  		
   		if(file.constructor.name!='File'){
-
   			return
   		}else{
   			for(var i=0;i<files.length;i++){
@@ -88,67 +93,55 @@
   			}
   			if(flag){
   				files.push(file)
-  				//change views
-  				drewList(file)
+  				drewList(file,files.length-1)
   			}
   		}
   	}
-  	fRead.onload=function(e){
-  		mv.decode(e.target.result,function(audiobuffer) {
-  			//console.log(audiobuffer.constructor.name)
-  			mv.source && mv.stop()
-  			var bs=MusicVisualizer.ac.createBufferSource()
-  			bs.connect(mv.analyser)
-  			bs.buffer=audiobuffer;
-  			bs[bs.start?"start":"noteOn"](0)
-  			bs.onended=mv.onended
-  			console.log(bs)
-  			mv.source=bs
-  		})
-  	}
-  var path=require('path')
+    function $(s){
+      return document.querySelectorAll(s)
+    }
+    function resize(){
+        document.body.style.height=window.innerHeight+"px"
+        height=box.clientHeight-10;
+        width=box.clientWidth-10;
+        canvas.height=height;
+        canvas.width=width;
+        var line=ctx.createLinearGradient(0,0,0,height)
+        line.addColorStop(0,"red")
+        line.addColorStop(0.33,"orange")
+        line.addColorStop(0.67,"yellow")
+        line.addColorStop(1,"green")
+        ctx.fillStyle=line
+    }
+    box.appendChild(canvas)
+    $('#stop')[0].onclick=function(){
+      mv.stop()
+    }
+    fRead.onload=function(e){
+      mv.decode(e.target.result,function(audiobuffer) {
+        mv.source && mv.stop()
+        var bs=MusicVisualizer.ac.createBufferSource()
+        bs.connect(mv.analyser)
+        bs.buffer=audiobuffer;
+        bs[bs.start?"start":"noteOn"](0)
+        bs.onended=mv.onended
+        //console.log(bs)
+        mv.source=bs
+      })
+    }
 	document.getElementById('file').onchange=function(e) {
-    if(this.files.length==0) return;
-		updateFiles(this.files[0])
-
-    document.getElementsByTagName('img')[0].src=path.join('./public/images/',this.files[0].name+  '.jpg')
-    console.log('./public/images/'+this.files[0].name)
-		fRead.readAsArrayBuffer(this.files[0])
+      if(this.files.length==0) return;
+	 	updateFiles(this.files[0])
+      document.getElementsByTagName('img')[0].src=path.join('./public/images/',this.files[0].name+'.jpg')
+      console.log('./public/images/'+this.files[0].name)
+	 	fRead.readAsArrayBuffer(this.files[0])
 	}
 	resize()
   	window.onresize=resize;
-  	function random(m,n){
-  		return Math.round(Math.random()*(n-m)+m)
-  	}
-  	function getDots(){
-  		Dots=[]
-  		for(var i=0;i<size;i++){
-  			Dots.push({
-  				cap:0
-  			})
-  		}
-  	}
-  	getDots()
-  	function draw(arr){
-  		//console.log(arr)
-  		ctx.clearRect(0,0,width,height)
-  		var w=width/size
-  		for(var i=0;i<size;i++){
-  			var o=Dots[i]
-  			var h=arr[i]/256*height-w*1.2
-  			if(h>0||o.cap>0){
-  				ctx.fillRect(w*i+w*0.2,height-h,w*0.8,h)
-  				ctx.fillRect(w*i+w*0.2,height-o.cap-w*0.8,w*0.8,w*0.8)
-  			}
-  			o.cap--;
-  			if(o.cap<0)
-  				o.cap=0
-  			if(h>0){
-  				o.cap=o.cap<(h+w*0.6)?(h+w*0.4):o.cap
-  			}
-  		}
-  	}
-
+    $('#list')[0].onclick=function(e) {
+        document.getElementsByTagName('img')[0].src=path.join('./public/images/',files[e.target.value].name+'.jpg')
+        fRead.readAsArrayBuffer(files[e.target.value])
+    }
 
 
 	$("#volume")[0].onchange=function(){
